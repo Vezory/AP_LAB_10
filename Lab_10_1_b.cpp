@@ -1,7 +1,7 @@
 // ============================================================================
 // Лабораторна робота № 10.1 (Рівень В)
 // Дисципліна: "Алгоритмізація та програмування"
-// Тема: Послідовний пошук в масиві структур з об’єднаннями
+// Тема: Послідовний пошук в масиві структур з об'єднаннями
 // Варіант: 16
 // Студент: Новосад Захарій Володимирович, група РІ-13
 // Викладач: Григорович В. Г.
@@ -10,37 +10,38 @@
 #include <iostream>
 #include <iomanip>
 #include <string>
-#include <Windows.h>            // забезпечення коректного відображення кирилиці
+#include <limits>               // для очищення потоку cin при помилковому вводі
+#include <Windows.h>            // забезпечення відображення кирилиці в консолі
 
 using namespace std;
 
-// Перелічуваний тип для спеціальностей згідно з методичними вказівками
+// Перелічуваний тип спеціальностей згідно з умовою лабораторної роботи
 enum Specialnist { KN, INF, ME, FI, TN };
 
-// Масив текстових назв спеціальностей для виводу у таблицю
-const string specStr[] = { 
-    "Комп. науки", 
-    "Інформатика", 
-    "Мат. та екон.", 
-    "Фіз. та інформ.", 
-    "Труд. навч." 
+// Масив текстових назв спеціальностей для виводу в таблицю
+string specStr[] = {
+    "Комп. науки",
+    "Інформатика",
+    "Мат. та екон.",
+    "Фіз. та інформ.",
+    "Труд. навч."
 };
 
-// Структура для представлення даних про студента (Рівень В - з об'єднанням union)
+// Структура даних про студента (Рівень В — із безіменним об'єднанням union)
 struct Student {
-    string prizv;           // прізвище студента (літерний рядок)
-    int kurs;               // курс (ціле число)
-    Specialnist spec;       // спеціальність (значення з переліку Specialnist)
-    int fizyka;             // оцінка з фізики (для всіх спеціальностей)
-    int matematika;         // оцінка з математики (для всіх спеціальностей)
-    
-    // Анонімне об'єднання (union) для представлення 3-ї оцінки:
-    // Усі поля всередині union займають одну й ту саму область оперативної пам'яті.
-    // Розмір union дорівнює розміру найбільшого з полів (тут sizeof(int) = 4 байти).
+    string prizv;               // прізвище студента (літерний рядок)
+    int kurs;                   // курс навчання (ціле число)
+    Specialnist spec;           // спеціальність (значення переліку Specialnist)
+    int fizyka;                 // оцінка з фізики (для всіх спеціальностей)
+    int matematika;             // оцінка з математики (для всіх спеціальностей)
+
+    // Безіменне об'єднання (union):
+    // Всі три поля ділять одну й ту саму область пам'яті розміром sizeof(int),
+    // адже кожен студент вивчає лише один профільний 3-й предмет залежно від spec:
     union {
-        int programuvannya;   // 3-тя оцінка для спеціальності "Комп’ютерні науки"
-        int chyselni_metody;  // 3-тя оцінка для спеціальності "Інформатика"
-        int pedagogika;       // 3-тя оцінка для спеціальностей "Мат. та екон.", "Фіз. та інформ.", "Труд. навч."
+        int programuvannya;     // для спеціальності "Комп'ютерні науки" (KN)
+        int chyselni_metody;    // для спеціальності "Інформатика" (INF)
+        int pedagogika;         // для спеціальностей ME, FI, TN
     };
 };
 
@@ -48,43 +49,53 @@ struct Student {
 // ПРОТОТИПИ ФУНКЦІЙ
 // ----------------------------------------------------------------------------
 void Create(Student* p, const int N);
-void Print(const Student* p, const int N);
+void Print(Student* p, const int N);
 int GetThirdGrade(const Student& s);
 double AverageGrade(const Student& s);
-int CountHighAverage(const Student* p, const int N);
-string BestSubject(const Student* p, const int N);
+int CountHighAverage(Student* p, const int N);
+string BestSubject(Student* p, const int N);
 
 // ============================================================================
 // ГОЛОВНА ФУНКЦІЯ ПРОГРАМИ
 // ============================================================================
 #ifndef UNIT_TESTING
-int main() {
-    // Встановлення кодової сторінки 1251 для коректного введення та виведення кирилиці
-    SetConsoleCP(1251);       // встановлення сторінки win-cp1251 в потік вводу
-    SetConsoleOutputCP(1251); // встановлення сторінки win-cp1251 в потік виводу
+int main()
+{                               // забезпечення відображення кирилиці:
+    SetConsoleCP(1251);         // встановлення сторінки win-cp1251 в потік вводу
+    SetConsoleOutputCP(1251);   // встановлення сторінки win-cp1251 в потік виводу
 
-    int N; // кількість студентів у групі
-    cout << "Введіть кількість студентів N: ";
-    cin >> N;
+    int N;                      // кількість студентів у групі
+
+    // Введення кількості студентів із контролем коректності (N > 0)
+    do {
+        cout << "Введіть кількість студентів N: ";
+        cin >> N;
+        if (cin.fail() || N <= 0) {
+            cin.clear();
+            cin.ignore((numeric_limits<streamsize>::max)(), '\n');
+            cout << "Помилка! Кількість студентів має бути додатним цілим числом." << endl;
+            N = 0;
+        }
+    } while (N <= 0);
 
     // Виділення динамічної пам'яті під масив структур з об'єднаннями
     Student* p = new Student[N];
 
-    // Крок 1: Введення даних з клавіатури
+    // 1. Введення даних з клавіатури
     Create(p, N);
 
-    // Крок 2: Виведення масиву у вигляді 9-колонкової таблиці з прочерками
+    // 2. Виведення масиву у вигляді таблиці з 9 клітинками (за зразком посібника)
     Print(p, N);
 
-    // Крок 3: Виконання завдання 1 (Варіант 16) - підрахунок студентів із сер. балом > 4.5
+    // 3. Виконання завдання 1 (Варіант 16): кількість студентів із середнім балом > 4,5
     int countHigh = CountHighAverage(p, N);
     cout << "1. Кількість студентів, середній бал яких вищий за 4,5: " << countHigh << endl;
 
-    // Крок 4: Виконання завдання 2 (Варіант 16) - визначення предмета з найбільшим середнім балом
+    // 4. Виконання завдання 2 (Варіант 16): предмет із найбільшим середнім балом
     string best = BestSubject(p, N);
     cout << "2. Предмет, середній бал якого найбільший по групі: " << best << endl;
 
-    // Звільнення динамічної пам'яті
+    // Звільнення динамічно виділеної пам'яті
     delete[] p;
 
     return 0;
@@ -96,138 +107,209 @@ int main() {
 // ============================================================================
 
 // Функція формування (введення) динамічного масиву структур з об'єднаннями
-void Create(Student* p, const int N) {
-    int ispec; // допоміжна змінна для номера спеціальності
-    for (int i = 0; i < N; i++) {
+void Create(Student* p, const int N)
+{
+    int ispec;                  // тимчасова змінна для зчитування номера спеціальності
+    for (int i = 0; i < N; i++)
+    {
         cout << "Студент № " << i + 1 << ":" << endl;
 
-        // Очищення буфера клавіатури від залишкових символів '\n'
-        cin.get();
-        cin.sync();
+        cin.get();              // очищуємо буфер клавіатури — бо залишаються символи
+        cin.sync();             // "кінець рядка", які не дають ввести наступний літерний рядок
 
-        cout << "  прізвище: "; 
-        getline(cin, p[i].prizv);
+        cout << "    прізвище: "; getline(cin, p[i].prizv);
 
-        cout << "  курс: "; 
-        cin >> p[i].kurs;
+        // Введення курсу [1..6]
+        do {
+            cout << "    курс (1-6): ";
+            cin >> p[i].kurs;
+            if (cin.fail() || p[i].kurs < 1 || p[i].kurs > 6) {
+                cin.clear();
+                cin.ignore((numeric_limits<streamsize>::max)(), '\n');
+                cout << "    Помилка! Введіть курс від 1 до 6." << endl;
+                p[i].kurs = 0;
+            }
+        } while (p[i].kurs < 1 || p[i].kurs > 6);
 
-        cout << "  спеціальність (0 - Комп. науки, 1 - Інформатика, 2 - Мат. та екон., 3 - Фіз. та інформ., 4 - Труд. навч.): ";
-        cin >> ispec;
+        // Введення спеціальності [0..4]
+        do {
+            cout << "    спеціальність (0 - Комп. науки, 1 - Інформатика, 2 - Мат. та екон., 3 - Фіз. та інформ., 4 - Труд. навч.): ";
+            cin >> ispec;
+            if (cin.fail() || ispec < 0 || ispec > 4) {
+                cin.clear();
+                cin.ignore((numeric_limits<streamsize>::max)(), '\n');
+                cout << "    Помилка! Введіть число від 0 до 4." << endl;
+                ispec = -1;
+            }
+        } while (ispec < 0 || ispec > 4);
         p[i].spec = (Specialnist)ispec;
 
-        cout << "  оцінка з фізики: "; 
-        cin >> p[i].fizyka;
+        // Оцінка з фізики [1..5]
+        do {
+            cout << "    оцінка з фізики (1-5): ";
+            cin >> p[i].fizyka;
+            if (cin.fail() || p[i].fizyka < 1 || p[i].fizyka > 5) {
+                cin.clear();
+                cin.ignore((numeric_limits<streamsize>::max)(), '\n');
+                cout << "    Помилка! Введіть оцінку від 1 до 5." << endl;
+                p[i].fizyka = 0;
+            }
+        } while (p[i].fizyka < 1 || p[i].fizyka > 5);
 
-        cout << "  оцінка з математики: "; 
-        cin >> p[i].matematika;
+        // Оцінка з математики [1..5]
+        do {
+            cout << "    оцінка з математики (1-5): ";
+            cin >> p[i].matematika;
+            if (cin.fail() || p[i].matematika < 1 || p[i].matematika > 5) {
+                cin.clear();
+                cin.ignore((numeric_limits<streamsize>::max)(), '\n');
+                cout << "    Помилка! Введіть оцінку від 1 до 5." << endl;
+                p[i].matematika = 0;
+            }
+        } while (p[i].matematika < 1 || p[i].matematika > 5);
 
-        // Залежно від спеціальності студента записуємо 3-тю оцінку у відповідне поле union
-        switch (p[i].spec) {
+        // Залежно від спеціальності вводимо оцінку у відповідне поле об'єднання union
+        int third = 0;
+        switch (p[i].spec)
+        {
         case KN:
-            cout << "  оцінка з програмування: "; 
-            cin >> p[i].programuvannya;
+            do {
+                cout << "    оцінка з програмування (1-5): ";
+                cin >> third;
+                if (cin.fail() || third < 1 || third > 5) {
+                    cin.clear();
+                    cin.ignore((numeric_limits<streamsize>::max)(), '\n');
+                    cout << "    Помилка! Введіть оцінку від 1 до 5." << endl;
+                    third = 0;
+                }
+            } while (third < 1 || third > 5);
+            p[i].programuvannya = third;
             break;
         case INF:
-            cout << "  оцінка з чисельних методів: "; 
-            cin >> p[i].chyselni_metody;
+            do {
+                cout << "    оцінка з чисельних методів (1-5): ";
+                cin >> third;
+                if (cin.fail() || third < 1 || third > 5) {
+                    cin.clear();
+                    cin.ignore((numeric_limits<streamsize>::max)(), '\n');
+                    cout << "    Помилка! Введіть оцінку від 1 до 5." << endl;
+                    third = 0;
+                }
+            } while (third < 1 || third > 5);
+            p[i].chyselni_metody = third;
             break;
         case ME:
         case FI:
         case TN:
-            cout << "  оцінка з педагогіки: "; 
-            cin >> p[i].pedagogika;
+            do {
+                cout << "    оцінка з педагогіки (1-5): ";
+                cin >> third;
+                if (cin.fail() || third < 1 || third > 5) {
+                    cin.clear();
+                    cin.ignore((numeric_limits<streamsize>::max)(), '\n');
+                    cout << "    Помилка! Введіть оцінку від 1 до 5." << endl;
+                    third = 0;
+                }
+            } while (third < 1 || third > 5);
+            p[i].pedagogika = third;
             break;
         }
         cout << endl;
     }
 }
 
-// Допоміжна функція для отримання значення 3-ї оцінки з union залежно від спеціальності
-int GetThirdGrade(const Student& s) {
-    switch (s.spec) {
-    case KN: 
-        return s.programuvannya;
-    case INF: 
-        return s.chyselni_metody;
-    default: 
-        return s.pedagogika;
+// Допоміжна функція вибору 3-ї профільної оцінки з union залежно від спеціальності
+int GetThirdGrade(const Student& s)
+{
+    switch (s.spec)
+    {
+    case KN:  return s.programuvannya;
+    case INF: return s.chyselni_metody;
+    default:  return s.pedagogika;
     }
 }
 
 // Допоміжна функція для обчислення індивідуального середнього балу студента
-double AverageGrade(const Student& s) {
-    // Додаємо фізику, математику та відповідну 3-тю оцінку з об'єднання
+double AverageGrade(const Student& s)
+{
     return (s.fizyka + s.matematika + GetThirdGrade(s)) / 3.0;
 }
 
-// Функція виведення масиву у вигляді таблиці з 9 клітинками
-void Print(const Student* p, const int N) {
-    cout << "=====================================================================================================================" << endl;
-    cout << "| № |   Прізвище   | Курс |  Спеціальність  | Фізика | Математика | Програмування | Чис. методи | Педагогіка | Сер. бал |" << endl;
-    cout << "---------------------------------------------------------------------------------------------------------------------" << endl;
+// Функція виведення масиву структур у вигляді таблиці з 9 клітинок (за зразком посібника)
+void Print(Student* p, const int N)
+{
+    cout << "==============================================================================================================" << endl;
+    cout << "|  №  |   Прізвище   | Курс |  Спеціальність  | Фізика | Математика | Програмування | Чис. методи | Педагогіка |" << endl;
+    cout << "--------------------------------------------------------------------------------------------------------------" << endl;
 
-    for (int i = 0; i < N; i++) {
-        double avg = AverageGrade(p[i]);
-        cout << "| " << setw(1) << right << i + 1 << " "
-             << "| " << setw(12) << left << p[i].prizv << " "
+    for (int i = 0; i < N; i++)
+    {
+        cout << "| " << setw(3) << right << i + 1 << " ";
+        cout << "| " << setw(13) << left << p[i].prizv
              << "| " << setw(4) << right << p[i].kurs << " "
-             << "| " << setw(15) << left << specStr[p[i].spec] << " "
+             << "| " << setw(16) << left << specStr[p[i].spec]
              << "| " << setw(6) << right << p[i].fizyka << " "
              << "| " << setw(10) << right << p[i].matematika << " ";
 
-        // Заповнюємо лише ту клітинку, яка відповідає профілю студента, в інші ставимо "-"
-        switch (p[i].spec) {
+        // Заповнюється лише одна з трьох клітинок профільної оцінки, решта — порожні (як у методичці)
+        switch (p[i].spec)
+        {
         case KN:
             cout << "| " << setw(13) << right << p[i].programuvannya << " "
-                 << "| " << setw(11) << right << "-" << " "
-                 << "| " << setw(10) << right << "-" << " ";
+                 << "| " << setw(11) << right << "" << " "
+                 << "| " << setw(10) << right << "" << " |" << endl;
             break;
         case INF:
-            cout << "| " << setw(13) << right << "-" << " "
+            cout << "| " << setw(13) << right << "" << " "
                  << "| " << setw(11) << right << p[i].chyselni_metody << " "
-                 << "| " << setw(10) << right << "-" << " ";
+                 << "| " << setw(10) << right << "" << " |" << endl;
             break;
         case ME:
         case FI:
         case TN:
-            cout << "| " << setw(13) << right << "-" << " "
-                 << "| " << setw(11) << right << "-" << " "
-                 << "| " << setw(10) << right << p[i].pedagogika << " ";
+            cout << "| " << setw(13) << right << "" << " "
+                 << "| " << setw(11) << right << "" << " "
+                 << "| " << setw(10) << right << p[i].pedagogika << " |" << endl;
             break;
         }
-
-        cout << "| " << setw(8) << fixed << setprecision(2) << right << avg << " |" << endl;
     }
-    cout << "=====================================================================================================================" << endl;
+    cout << "==============================================================================================================" << endl;
+    cout << endl;
 }
 
-// Варіант 16. Завдання 1:
-// Обчислення кількості студентів, чий середній бал вищий за 4.5
-int CountHighAverage(const Student* p, const int N) {
-    int count = 0;
-    for (int i = 0; i < N; i++) {
-        if (AverageGrade(p[i]) > 4.5) {
-            count++;
+// Варіант 16, завдання 1:
+// Обчислення кількості студентів, середній бал яких вищий за 4,5
+int CountHighAverage(Student* p, const int N)
+{
+    int k = 0;                  // лічильник студентів, чий середній бал > 4.5
+    for (int i = 0; i < N; i++)
+    {
+        if (AverageGrade(p[i]) > 4.5)
+        {
+            k++;
         }
     }
-    return count;
+    return k;
 }
 
-// Варіант 16. Завдання 2:
-// Визначення предмета з найбільшим середнім балом
-string BestSubject(const Student* p, const int N) {
+// Варіант 16, завдання 2:
+// Порівнюючи середні бали для кожного предмета (з урахуванням union), визначити предмет із найбільшим середнім балом
+string BestSubject(Student* p, const int N)
+{
     if (N <= 0) return "Немає даних";
 
     double sumFiz = 0.0, sumMat = 0.0;
     double sumProg = 0.0, sumChis = 0.0, sumPed = 0.0;
     int countProg = 0, countChis = 0, countPed = 0;
 
-    // Підсумовуємо оцінки для кожного навчального предмета
-    for (int i = 0; i < N; i++) {
+    // Підсумовуємо оцінки по всіх 5 дисциплінах
+    for (int i = 0; i < N; i++)
+    {
         sumFiz += p[i].fizyka;
         sumMat += p[i].matematika;
 
-        switch (p[i].spec) {
+        switch (p[i].spec)
+        {
         case KN:
             sumProg += p[i].programuvannya;
             countProg++;
@@ -243,11 +325,12 @@ string BestSubject(const Student* p, const int N) {
         }
     }
 
+    // Обчислюємо середній бал кожного предмета серед студентів, які його вивчали
     double avgFiz = sumFiz / N;
     double avgMat = sumMat / N;
     double avgProg = (countProg > 0) ? (sumProg / countProg) : -1.0;
     double avgChis = (countChis > 0) ? (sumChis / countChis) : -1.0;
-    double avgPed = (countPed > 0) ? (sumPed / countPed) : -1.0;
+    double avgPed  = (countPed  > 0) ? (sumPed  / countPed)  : -1.0;
 
     double maxAvg = avgFiz;
     string bestName = "Фізика";

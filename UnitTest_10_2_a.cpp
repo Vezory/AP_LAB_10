@@ -1,48 +1,63 @@
+#include "pch.h"
+#include "CppUnitTest.h"
+
 #define UNIT_TESTING
 #include "Lab_10_2_a.cpp"
-#include <cassert>
-#include <iostream>
 
-void TestLab10_2_a() {
-    const int N = 3;
-    Student students[N] = {
-        { "Сидоренко", 1, ME, 5, 5, 5 },   // avg = 5.0, inf = 5
-        { "Іваненко",  2, KN, 4, 4, 4 },   // avg = 4.0, inf = 4
-        { "Петренко",  1, INF, 4, 5, 5 }   // avg = 4.67, inf = 5
+using namespace Microsoft::VisualStudio::CppUnitTestFramework;
+
+namespace UnitTest102a
+{
+    TEST_CLASS(UnitTest102a)
+    {
+    public:
+        TEST_METHOD(TestPhysicalSortAndBinSearch)
+        {
+            const int N = 4;
+            Student students[N] = {
+                { "Антоненко", 1, KN,  5, 4, 5 },   // avg = 4.67, inf = 5
+                { "Яковенко",  2, INF, 4, 5, 5 },   // avg = 4.67, inf = 5
+                { "Петренко",  1, ME,  5, 5, 4 },   // avg = 4.67, inf = 4
+                { "Коваль",    2, FI,  4, 4, 4 }    // avg = 4.00, inf = 4
+            };
+
+            Sort(students, N);
+            // Порядок після Sort (сер. бал зр. -> 3-й предм. зр. -> прізвище спад.):
+            // 0: Коваль (4.00, 4)
+            // 1: Петренко (4.67, 4)
+            // 2: Яковенко (4.67, 5)
+            // 3: Антоненко (4.67, 5)
+            Assert::AreEqual(string("Коваль"), students[0].prizv);
+            Assert::AreEqual(string("Петренко"), students[1].prizv);
+            Assert::AreEqual(string("Яковенко"), students[2].prizv);
+            Assert::AreEqual(string("Антоненко"), students[3].prizv);
+
+            // Пошук як за точним дробом, так і за округленим значенням 4.67
+            Assert::AreEqual(1, BinSearch(students, N, "Петренко", 4.67, 4));
+            Assert::AreEqual(3, BinSearch(students, N, "Антоненко", (5.0 + 4.0 + 5.0) / 3.0, 5));
+            Assert::AreEqual(-1, BinSearch(students, N, "Сидоренко", 5.0, 5));
+        }
+
+        TEST_METHOD(TestIndexSort)
+        {
+            const int N = 4;
+            Student students[N] = {
+                { "Яковенко",  2, INF, 4, 5, 5 },   // 0: avg 4.67, inf 5
+                { "Коваль",    2, FI,  4, 4, 4 },   // 1: avg 4.00, inf 4
+                { "Антоненко", 1, KN,  5, 4, 5 },   // 2: avg 4.67, inf 5
+                { "Петренко",  1, ME,  5, 5, 4 }    // 3: avg 4.67, inf 4
+            };
+
+            int* I = IndexSort(students, N);
+            // Індексний порядок (сер. бал зр. -> 3-й предм. зр. -> прізвище алфавіт):
+            // 1 (Коваль) -> 3 (Петренко) -> 2 (Антоненко) -> 0 (Яковенко)
+            Assert::AreEqual(1, I[0]);
+            Assert::AreEqual(3, I[1]);
+            Assert::AreEqual(2, I[2]);
+            Assert::AreEqual(0, I[3]);
+            // Вихідний масив не змінився
+            Assert::AreEqual(string("Яковенко"), students[0].prizv);
+            delete[] I;
+        }
     };
-
-    // Test Sort
-    Sort(students, N);
-    // After Sort (ascending by avg):
-    // 1st: Іваненко (4.0)
-    // 2nd: Петренко (4.67)
-    // 3rd: Сидоренко (5.0)
-    assert(students[0].prizv == "Іваненко");
-    assert(students[1].prizv == "Петренко");
-    assert(students[2].prizv == "Сидоренко");
-    std::cout << "[TEST PASSED] Sort physical ordering verified" << std::endl;
-
-    // Test BinSearch
-    int foundIdx = BinSearch(students, N, "Петренко", (4.0 + 5.0 + 5.0) / 3.0, 5);
-    assert(foundIdx == 1);
-    std::cout << "[TEST PASSED] BinSearch found student at index " << foundIdx << std::endl;
-
-    int notFound = BinSearch(students, N, "Коваль", 5.0, 5);
-    assert(notFound == -1);
-    std::cout << "[TEST PASSED] BinSearch returned -1 for non-existent student" << std::endl;
-
-    // Test IndexSort
-    int* I = IndexSort(students, N);
-    assert(I[0] == 0 && I[1] == 1 && I[2] == 2);
-    delete[] I;
-    std::cout << "[TEST PASSED] IndexSort verified" << std::endl;
-
-    std::cout << "\nALL UNIT TESTS FOR LAB 10.2.a PASSED SUCCESSFULLY!" << std::endl;
-}
-
-int main() {
-    SetConsoleCP(1251);
-    SetConsoleOutputCP(1251);
-    TestLab10_2_a();
-    return 0;
 }
